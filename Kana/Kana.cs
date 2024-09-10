@@ -112,6 +112,21 @@ namespace Kana
         private const char katakanaStart = '\u30A0';
         private const int kanaRange = 0x5E;
 
+        static bool IsHiragana(char c)
+        {
+            return (c >= '\u3040' && c <= '\u309F');
+        }
+
+        static bool IsKatakana(char c)
+        {
+            return (c >= '\u30A0' && c <= '\u30FF');
+        }
+
+        static bool IsSmallKana(char c)
+        {
+            return (c >= '\u3083' && c <= '\u3087') || (c >= '\u3041' && c <= '\u304F');
+        }
+
         public static List<string> SplitString(string input)
         {
             string pattern = @"(?![ー゜])([a-zA-Z]+|[+-]|[0-9]|[\u4e00-\u9fa5]|[\u3040-\u309F\u30A0-\u30FF][ャュョゃゅょァィゥェォぁぃぅぇぉ]?)";
@@ -120,20 +135,20 @@ namespace Kana
 
         public static bool IsKana(string input)
         {
-            return DictUtil.KanaToRomajiMap.ContainsKey(input);
+            return DictUtil.KanaToRomajiMap.ContainsKey(ConvertKana(input));
         }
 
         public static bool IsKana(char input)
         {
-            return DictUtil.KanaToRomajiMap.ContainsKey(input.ToString());
+            return DictUtil.KanaToRomajiMap.ContainsKey(ConvertKana(input.ToString()));
         }
 
         public static string ConvertKana(string kana, Error error = Error.Default, KanaType kanaType = KanaType.Hiragana)
         {
-            var convertedKana = "";
+            string convertedKana = "";
             foreach (char kanaChar in kana)
             {
-                if (!IsKana(kanaChar) && error == Error.Ignore)
+                if (!(IsHiragana(kanaChar) || IsKatakana(kanaChar) || IsSmallKana(kanaChar)) && error == Error.Ignore)
                     continue;
                 if (kanaType == KanaType.Hiragana)
                 {

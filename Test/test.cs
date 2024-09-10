@@ -28,6 +28,7 @@ namespace Test
             Console.WriteLine($"こ -> {Kana.Kana.IsKana("こ")}");
             Console.WriteLine($"的 -> {Kana.Kana.IsKana("的")}");
             Console.WriteLine($"りゃ -> {Kana.Kana.IsKana("りゃ")}");
+            Console.WriteLine($"ニャ -> {Kana.Kana.IsKana("ニャ")}");
         }
     }
 }
