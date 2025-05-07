@@ -32,20 +32,7 @@ namespace Kana
         //  Convert to utf-16 string with delimiter(default: " ").
         public string ToStr(string delimiter = " ")
         {
-            StringBuilder result = new StringBuilder();
-            bool first = true;
-
-            foreach (var res in this)
-            {
-                if (!first)
-                {
-                    result.Append(delimiter);
-                }
-                result.Append(res.Error ? res.Kana : res.Romaji);
-                first = false;
-            }
-
-            return result.ToString();
+            return string.Join(delimiter, this.Select(res => res.Error ? res.Kana : res.Romaji));
         }
     }
 
@@ -76,20 +63,7 @@ namespace Kana
         //  Convert to utf-16 string with delimiter(default: " ").
         public string ToStr(string delimiter = " ")
         {
-            StringBuilder result = new StringBuilder();
-            bool first = true;
-
-            foreach (var res in this)
-            {
-                if (!first)
-                {
-                    result.Append(delimiter);
-                }
-                result.Append(res.Error ? res.Romaji : res.Kana);
-                first = false;
-            }
-
-            return result.ToString();
+            return string.Join(delimiter, this.Select(res => res.Error ? res.Romaji : res.Kana));
         }
     }
 
@@ -127,57 +101,58 @@ namespace Kana
             return (c >= '\u3083' && c <= '\u3087') || (c >= '\u3041' && c <= '\u304F');
         }
 
+        private static readonly Regex _splitRegex = new Regex(
+            @"(?![ー゜])([a-zA-Z]+|[+-]|[0-9]|[\u4e00-\u9fa5]|[\u3040-\u309F\u30A0-\u30FF][ャュョゃゅょァィゥェォぁぃぅぇぉ]?)",
+            RegexOptions.Compiled
+        );
+
         public static List<string> SplitString(string input)
         {
-            string pattern = @"(?![ー゜])([a-zA-Z]+|[+-]|[0-9]|[\u4e00-\u9fa5]|[\u3040-\u309F\u30A0-\u30FF][ャュョゃゅょァィゥェォぁぃぅぇぉ]?)";
-            return Regex.Matches(input, pattern).Cast<Match>().Select(m => m.Value).ToList();
+            return _splitRegex.Matches(input).Cast<Match>().Select(m => m.Value).ToList();
         }
+
+        private static readonly HashSet<string> _kanaSet = new HashSet<string>(DictUtil.KanaToRomajiMap.Keys);
 
         public static bool IsKana(string input)
         {
-            return DictUtil.KanaToRomajiMap.ContainsKey(ConvertKana(input));
+            return _kanaSet.Contains(ConvertKana(input));
         }
 
         public static bool IsKana(char input)
         {
-            return DictUtil.KanaToRomajiMap.ContainsKey(ConvertKana(input.ToString()));
+            return _kanaSet.Contains(ConvertKana(input.ToString()));
+        }
+
+        // Kana.cs
+        private static string ConvertSingleChar(char kanaChar, KanaType kanaType)
+        {
+            if (kanaType == KanaType.Hiragana &&
+                kanaChar >= katakanaStart &&
+                kanaChar < katakanaStart + kanaRange)
+            {
+                return ((char)(kanaChar - katakanaStart + hiraganaStart)).ToString();
+            }
+
+            if (kanaType == KanaType.Katakana &&
+                kanaChar >= hiraganaStart &&
+                kanaChar < hiraganaStart + kanaRange)
+            {
+                return ((char)(kanaChar + katakanaStart - hiraganaStart)).ToString();
+            }
+
+            return kanaChar.ToString();
         }
 
         public static string ConvertKana(string kana, Error error = Error.Default, KanaType kanaType = KanaType.Hiragana)
         {
-            string convertedKana = "";
-            foreach (char kanaChar in kana)
+            var sb = new StringBuilder(kana.Length);
+            foreach (char c in kana)
             {
-                if (!(IsHiragana(kanaChar) || IsKatakana(kanaChar) || IsSmallKana(kanaChar)) && error == Error.Ignore)
+                if (error == Error.Ignore && !(IsHiragana(c) || IsKatakana(c) || IsSmallKana(c)))
                     continue;
-                if (kanaType == KanaType.Hiragana)
-                {
-                    // Target is Hiragana
-                    if (kanaChar >= katakanaStart && kanaChar < katakanaStart + kanaRange)
-                    {
-                        // Katakana to Hiragana
-                        convertedKana += (char)(kanaChar - katakanaStart + hiraganaStart);
-                    }
-                    else
-                    {
-                        convertedKana += kanaChar;
-                    }
-                }
-                else
-                {
-                    // Target is Katakana
-                    if (kanaChar >= hiraganaStart && kanaChar < hiraganaStart + kanaRange)
-                    {
-                        // Hiragana to Katakana
-                        convertedKana += (char)(kanaChar + katakanaStart - hiraganaStart);
-                    }
-                    else
-                    {
-                        convertedKana += kanaChar;
-                    }
-                }
+                sb.Append(ConvertSingleChar(c, kanaType));
             }
-            return convertedKana;
+            return sb.ToString();
         }
 
         public static List<string> ConvertKana(List<string> kanaList, Error error = Error.Default, KanaType kanaType = KanaType.Hiragana)
@@ -251,12 +226,17 @@ namespace Kana
 
             if (doubleWrittenSokuon)
             {
-                for (int i = 0; i < res.Count - 1; ++i)
+                for (int i = res.Count - 1; i >= 0; i--)
                 {
-                    if (res[i].Romaji == "cl")
+                    if (res[i].Romaji == "cl" && i < res.Count - 1)
                     {
-                        res[i] = new RomajiRes { Kana = res[i].Kana, Romaji = res[i].Romaji[0] + res[i].Romaji, Error = res[i].Error };
-                        res.RemoveAt(i);
+                        res[i] = new RomajiRes
+                        {
+                            Kana = res[i].Kana,
+                            Romaji = res[i + 1].Romaji[0] + res[i + 1].Romaji,
+                            Error = res[i].Error
+                        };
+                        res.RemoveAt(i + 1);
                     }
                 }
             }

@@ -1,4 +1,5 @@
 ﻿using Kana;
+using Xunit;
 
 namespace Test
 {
@@ -29,6 +30,23 @@ namespace Test
             Console.WriteLine($"的 -> {Kana.Kana.IsKana("的")}");
             Console.WriteLine($"りゃ -> {Kana.Kana.IsKana("りゃ")}");
             Console.WriteLine($"ニャ -> {Kana.Kana.IsKana("ニャ")}");
+
+            var result = Kana.Kana.SplitString("きゃっちー123abc漢字");
+            Assert.Equal(new List<string> { "きゃ", "っ", "ち", "1", "2", "3", "abc", "漢", "字" }, result);
+
+            Assert.Equal("アイウエオ", Kana.Kana.ConvertKana("あいうえお", Error.Default, KanaType.Katakana));
+            Assert.Equal("あいうえお", Kana.Kana.ConvertKana("アイウエオ", Error.Default, KanaType.Hiragana));
+
+            Assert.Equal("あい", Kana.Kana.ConvertKana("aあbいc", Error.Ignore, KanaType.Hiragana));
+            Assert.Equal("あい", Kana.Kana.ConvertKana("aあbいc", Error.Ignore, KanaType.Hiragana));
+
+            var res = Kana.Kana.KanaToRomaji("かった", doubleWrittenSokuon: true).ToStr();
+            Assert.Equal("ka tta", res);
+
+            Assert.True(Kana.Kana.IsKana("にゃ"));
+            Assert.False(Kana.Kana.IsKana("にゃん"));
+            Assert.False(Kana.Kana.IsKana("abc"));
+
         }
     }
 }
